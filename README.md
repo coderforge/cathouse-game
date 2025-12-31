@@ -22,6 +22,11 @@ Meet the troublemakers living in the house:
 * ** 📱 Mobile Responsive:** Optimized UI for phones with touch controls and a compact landscape menu.
 * ** 🇮🇹 Multi-language:** Supports English, Italian, and Spanish.
 
+## 🧪 Integration Test with Mapache Sign-off
+Quality Assurance is taken very seriously at CoderForge. The game has been rigorously tested and approved by the real Mapache.
+
+[🎥 **Watch Mapache's Integration Test & Sign-off**](https://raw.githubusercontent.com/coderforge/cathouse-game/refs/heads/main/cat%20house%20-%20integration%20test%20-%20sign%20off%20by%20Mapache.mp4)
+
 ## 🛠️ Built With
 * **HTML5 & CSS3:** No external frameworks, pure vanilla web technologies.
 * **JavaScript (ES6+):** Custom game loop, AI logic, and DOM manipulation.
@@ -32,7 +37,7 @@ Since this is a static web application, you don't need to install any dependenci
 
 1.  **Clone the repository:**
     ```bash
-    git clone [https://github.com/your-username/cathouse-game.git](https://github.com/your-username/cathouse-game.git)
+    git clone [https://github.com/coderforge/cathouse-game.git](https://github.com/coderforge/cathouse-game.git)
     ```
 2.  **Open the game:**
     Simply navigate to the folder and double-click `index.html` to open it in your web browser.
