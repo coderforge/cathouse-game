@@ -2,8 +2,8 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cat House - Draggable Map</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cat House - Mobile Compact</title>
     <style>
         :root {
             --bg-color: #1a1a1a;
@@ -19,6 +19,7 @@
             overflow: hidden;
             display: flex; flex-direction: column; height: 100vh;
             user-select: none;
+            -webkit-user-select: none;
         }
 
         /* --- STINK OVERLAY --- */
@@ -30,12 +31,13 @@
         }
         @keyframes pulse-stink { 0% { opacity: 0.5; } 50% { opacity: 0.8; } 100% { opacity: 0.5; } }
 
-        /* --- UI PANEL --- */
+        /* --- UI PANEL (Desktop Default) --- */
         #ui-panel {
             background: var(--ui-bg); border-bottom: 4px solid #000;
             padding: 10px 20px; display: grid; grid-template-columns: 1fr auto 1fr;
             align-items: center; height: 80px; z-index: 6000;
             box-shadow: 0 10px 20px rgba(0,0,0,0.5); position: relative;
+            transition: all 0.3s;
         }
 
         .stat-group { font-size: 13px; font-weight: bold; color: #fff; margin-right: 15px; display: inline-block; }
@@ -71,12 +73,74 @@
         }
         .log-msg { margin-top: 2px; color: #fff; font-weight: bold; }
 
+        /* --- MOBILE RESPONSIVE STYLES (COMPATTO 2 RIGHE) --- */
+        @media (max-width: 600px) {
+            #ui-panel {
+                /* Trasforma in griglia a 2 righe */
+                display: grid;
+                grid-template-columns: 1fr auto; /* Col 1: Statistiche, Col 2: Orologio */
+                grid-template-rows: auto auto;   /* Riga 1: Info, Riga 2: Bottoni */
+                height: auto;
+                padding: 6px;
+                gap: 4px;
+            }
+
+            /* 1. Gruppo Statistiche (Alto Sinistra) */
+            #ui-panel > div:nth-child(1) {
+                grid-row: 1; 
+                grid-column: 1;
+                display: flex; 
+                justify-content: flex-start;
+                align-items: center;
+                flex-wrap: nowrap;
+            }
+
+            /* 2. Titolo e Orologio (Alto Destra) */
+            #ui-panel > div:nth-child(2) {
+                grid-row: 1; 
+                grid-column: 2;
+                display: flex;
+                align-items: center;
+                justify-content: flex-end;
+            }
+            /* NASCONDI IL TITOLO SU MOBILE PER RISPARMIARE SPAZIO */
+            #ui-panel h2 { display: none; }
+
+            /* 3. Bottoni (Riga Sotto, Piena larghezza) */
+            #ui-panel > div:nth-child(3) {
+                grid-row: 2; 
+                grid-column: 1 / span 2;
+                display: flex;
+                justify-content: space-between;
+                width: 100%;
+                margin-top: 2px;
+            }
+
+            /* Stili ridotti per mobile */
+            .stat-group { margin-right: 8px; font-size: 10px; display: flex; flex-direction: column; align-items: center; line-height: 1; }
+            .bar-frame { width: 35px; height: 5px; margin-top: 2px; }
+            #clock-display { font-size: 14px; padding: 2px 6px; }
+            .btn { width: 48%; padding: 8px 0; font-size: 12px; margin: 0; } /* Bottoni grandi facili da premere */
+            
+            /* Sposta lingua e log */
+            #lang-select { top: auto; bottom: 80px; right: 10px; transform: scale(0.8); opacity: 0.7; }
+            #log-area { top: 100px; left: 10px; font-size: 12px; }
+        }
+
+        /* Landscape Mobile super sottile */
+        @media (max-height: 500px) and (orientation: landscape) {
+            #ui-panel { display: flex; height: 40px; padding: 0 10px; }
+            #ui-panel h2 { display: none; }
+            .stat-group span { display: none; }
+            .bar-frame { width: 40px; }
+            .btn { padding: 2px 10px; font-size: 10px; width: auto; }
+            #ui-panel > div:nth-child(3) { width: auto; }
+        }
+
         /* --- FOOTER --- */
         #footer {
             position: absolute; bottom: 10px; right: 15px;
-            font-size: 12px;
-            color: #f1c40f; 
-            z-index: 8000;
+            font-size: 12px; color: #f1c40f; z-index: 8000;
             text-align: right; pointer-events: auto; font-family: monospace;
         }
         #footer a { color: #f1c40f; text-decoration: none; cursor: pointer; border-bottom: 1px dotted #f1c40f; }
@@ -102,7 +166,7 @@
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: #222; z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; transition: opacity 1s;
         }
-        .loading-scene { position: relative; width: 300px; height: 300px; perspective: 600px; display: flex; justify-content: center; align-items: center; }
+        .loading-scene { position: relative; width: 300px; height: 300px; perspective: 600px; display: flex; justify-content: center; align-items: center; transform: scale(0.8); }
         .loading-leg { position: absolute; width: 20px; height: 120px; background: #3e2723; top: 50%; left: 50%; transform: translate(-50%, -20px); z-index: 0; }
         .loading-base { position: absolute; width: 100px; height: 100px; background: #3e2723; top: 50%; left: 50%; border-radius: 50%; transform: translate(-50%, 80px) rotateX(75deg); box-shadow: 0 10px 20px black; z-index: 0; }
         .loading-table { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotateX(65deg); width: 220px; height: 220px; background: #5d4037; border-radius: 50%; border: 10px solid #3e2723; box-shadow: 0 20px 0 #2d1e1a; z-index: 1; }
@@ -122,15 +186,13 @@
             background: radial-gradient(circle at center, #546e7a, #263238);
             display: flex; justify-content: center; align-items: center;
             cursor: grab;
+            touch-action: none;
         }
-        #game-viewport:active {
-            cursor: grabbing;
-        }
+        #game-viewport:active { cursor: grabbing; }
 
         .iso-world {
             position: relative; transform-style: preserve-3d;
             width: 0; height: 0;
-            /* Transition rimossa per drag fluido */
         }
 
         /* --- ROOMS --- */
@@ -345,18 +407,18 @@
     // --- ASSETS ---
     const svgChachi = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><g><path d="M25,50 Q10,20 25,10" stroke="#7f8c8d" stroke-width="4" fill="none"/><path d="M25,50 C25,40 70,40 75,55 C75,70 30,75 25,50" fill="#95a5a6"/><path d="M30,65 L30,90" stroke="#7f8c8d" stroke-width="6" stroke-linecap="round"/><path d="M65,65 L65,90" stroke="#7f8c8d" stroke-width="6" stroke-linecap="round"/><circle cx="75" cy="40" r="16" fill="#95a5a6"/><path d="M65,30 L62,10 L75,25 Z" fill="#7f8c8d"/><path d="M85,30 L88,10 L75,25 Z" fill="#7f8c8d"/><circle cx="80" cy="38" r="3" fill="#FFD700"/></g></svg>`;
     
-    // MODIFICA: MAPACHE CORRETTO (Muso dentro i bordi, elementi collegati)
+    // MODIFICA: MAPACHE FIX (Testa spostata a sinistra per rientrare nel riquadro 100px)
     const svgMapache = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><g>
-    <path d="M20,55 Q5,25 20,15" stroke="#3e2723" stroke-width="6" fill="none"/>
-    <path d="M30,65 L30,90" stroke="#3e2723" stroke-width="8" stroke-linecap="round"/>
-    <path d="M65,65 L65,90" stroke="#3e2723" stroke-width="8" stroke-linecap="round"/>
-    <path d="M20,55 C20,35 80,35 80,55 C80,75 25,75 20,55" fill="#d7ccc8"/>
-    <circle cx="82" cy="45" r="16" fill="#d7ccc8"/>
-    <circle cx="84" cy="45" r="14" fill="#3e2723"/>
-    <path d="M72,35 L68,15 L80,30 Z" fill="#3e2723"/>
-    <path d="M88,35 L94,15 L82,30 Z" fill="#3e2723"/>
+    <path d="M15,50 Q0,20 15,10" stroke="#3e2723" stroke-width="6" fill="none"/>
+    <path d="M25,65 L25,90" stroke="#3e2723" stroke-width="8" stroke-linecap="round"/>
+    <path d="M60,65 L60,90" stroke="#3e2723" stroke-width="8" stroke-linecap="round"/>
+    <path d="M15,50 C15,30 85,30 85,55 C85,80 20,80 15,50" fill="#d7ccc8"/>
+    <circle cx="79" cy="45" r="16" fill="#d7ccc8"/>
+    <circle cx="81" cy="45" r="14" fill="#3e2723"/>
+    <path d="M69,35 L65,15 L77,30 Z" fill="#3e2723"/>
+    <path d="M85,35 L91,15 L79,30 Z" fill="#3e2723"/>
     <ellipse cx="92" cy="50" rx="6" ry="4" fill="white"/>
-    <circle cx="88" cy="42" r="3" fill="#00BFFF"/>
+    <circle cx="85" cy="42" r="3" fill="#00BFFF"/>
     </g></svg>`;
 
     const svgLilu = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><g><path d="M15,50 Q5,30 15,20" stroke="black" stroke-width="5" fill="none"/><path d="M30,70 L30,90" stroke="black" stroke-width="8" stroke-linecap="round"/><path d="M65,70 L65,90" stroke="black" stroke-width="8" stroke-linecap="round"/><ellipse cx="50" cy="55" rx="35" ry="30" fill="#111"/><circle cx="80" cy="45" r="18" fill="#111"/><path d="M70,30 L65,10 L80,25 Z" fill="black"/><path d="M90,30 L95,10 L80,25 Z" fill="black"/><circle cx="85" cy="40" r="3" fill="#FFD700"/></g></svg>`;
@@ -377,8 +439,8 @@
         time: { h: 8, m: 0 },
         logHistory: [],
         toxicCloudActive: false,
-        // Drag settings
         drag: { active: false, currentX: 50, currentY: -300, startX: 0, startY: 0 },
+        baseScale: 1.3, // Scala base (desktop)
 
         rooms: [
             { id: 'office', x: -400, y: -400, w: 200, h: 250, nameKey: 'r_office', type: 'floor-wood' },
@@ -416,39 +478,79 @@
             document.getElementById('loading-bebu-container').innerHTML = svgBebu;
             setTimeout(() => { document.getElementById('loading-screen').style.opacity = 0; setTimeout(() => document.getElementById('loading-screen').style.display = 'none', 1000); }, 2000);
             this.changeLanguage('it');
+            this.adjustScale(); // Calcola lo zoom iniziale
             this.renderWorld();
-            this.initDrag(); // MODIFICA: Inizializza il drag
+            this.initDrag();
+            
+            // Re-adatta mappa se ruoti lo schermo
+            window.addEventListener('resize', () => { 
+                this.adjustScale(); 
+                this.renderWorld(); 
+            });
+
             setInterval(() => this.tick(), 500);
             setInterval(() => this.aiDecide(), 1000);
             setInterval(() => this.updateClock(), 1000);
+        },
+
+        adjustScale() {
+            const w = window.innerWidth;
+            if(w < 768) {
+                // Mobile
+                this.baseScale = 0.7;
+            } else {
+                // Desktop
+                this.baseScale = 1.3;
+            }
         },
 
         initDrag() {
             const vp = document.getElementById('game-viewport');
             const world = document.getElementById('world');
             
-            // Applica trasformazione iniziale
-            world.style.transform = `scale(1.3) rotateX(60deg) rotateZ(-45deg) translateZ(-100px) translateX(${this.drag.currentX}px) translateY(${this.drag.currentY}px)`;
+            const updateTransform = () => {
+                world.style.transform = `scale(${this.baseScale}) rotateX(60deg) rotateZ(-45deg) translateZ(-100px) translateX(${this.drag.currentX}px) translateY(${this.drag.currentY}px)`;
+            };
+            updateTransform();
 
-            vp.addEventListener('mousedown', (e) => {
-                if(e.target.closest('.entity') || e.target.closest('.room')) {
-                    // Cliccato su oggetto/stanza?
-                }
+            const startDrag = (x, y) => {
                 this.drag.active = true;
-                this.drag.startX = e.clientX - this.drag.currentX;
-                this.drag.startY = e.clientY - this.drag.currentY;
-            });
+                this.drag.startX = x - this.drag.currentX;
+                this.drag.startY = y - this.drag.currentY;
+            };
 
-            vp.addEventListener('mousemove', (e) => {
+            const moveDrag = (x, y) => {
                 if(!this.drag.active) return;
-                e.preventDefault();
-                this.drag.currentX = e.clientX - this.drag.startX;
-                this.drag.currentY = e.clientY - this.drag.startY;
-                world.style.transform = `scale(1.3) rotateX(60deg) rotateZ(-45deg) translateZ(-100px) translateX(${this.drag.currentX}px) translateY(${this.drag.currentY}px)`;
-            });
+                this.drag.currentX = x - this.drag.startX;
+                this.drag.currentY = y - this.drag.startY;
+                updateTransform();
+            };
 
-            vp.addEventListener('mouseup', () => { this.drag.active = false; });
-            vp.addEventListener('mouseleave', () => { this.drag.active = false; });
+            const endDrag = () => { this.drag.active = false; };
+
+            // Mouse Events
+            vp.addEventListener('mousedown', (e) => {
+                if(e.target.closest('.entity') || e.target.closest('.room')) {} 
+                startDrag(e.clientX, e.clientY);
+            });
+            vp.addEventListener('mousemove', (e) => {
+                if(this.drag.active) e.preventDefault();
+                moveDrag(e.clientX, e.clientY);
+            });
+            vp.addEventListener('mouseup', endDrag);
+            vp.addEventListener('mouseleave', endDrag);
+
+            // Touch Events (Mobile)
+            vp.addEventListener('touchstart', (e) => {
+                if(e.touches.length === 1) startDrag(e.touches[0].clientX, e.touches[0].clientY);
+            }, {passive: false});
+            vp.addEventListener('touchmove', (e) => {
+                if(this.drag.active && e.touches.length === 1) {
+                    e.preventDefault();
+                    moveDrag(e.touches[0].clientX, e.touches[0].clientY);
+                }
+            }, {passive: false});
+            vp.addEventListener('touchend', endDrag);
         },
 
         updateClock() {
@@ -512,7 +614,8 @@
 
         renderWorld() {
             const world = document.getElementById('world'); world.innerHTML = '';
-            world.style.transform = `scale(1.3) rotateX(60deg) rotateZ(-45deg) translateZ(-100px) translateX(${this.drag.currentX}px) translateY(${this.drag.currentY}px)`;
+            // Usa baseScale dinamica
+            world.style.transform = `scale(${this.baseScale}) rotateX(60deg) rotateZ(-45deg) translateZ(-100px) translateX(${this.drag.currentX}px) translateY(${this.drag.currentY}px)`;
 
             this.rooms.forEach(r => {
                 const el = document.createElement('div'); el.className = `room ${r.type}`;
