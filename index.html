@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cat House - Game</title>
+    <title>Cat House - Draggable Map</title>
     <style>
         :root {
             --bg-color: #1a1a1a;
@@ -18,6 +18,7 @@
             margin: 0; padding: 0;
             overflow: hidden;
             display: flex; flex-direction: column; height: 100vh;
+            user-select: none;
         }
 
         /* --- STINK OVERLAY --- */
@@ -74,8 +75,7 @@
         #footer {
             position: absolute; bottom: 10px; right: 15px;
             font-size: 12px;
-            /* MODIFICA: Colore cambiato in giallo (#f1c40f) */
-            color: #f1c40f;
+            color: #f1c40f; 
             z-index: 8000;
             text-align: right; pointer-events: auto; font-family: monospace;
         }
@@ -121,11 +121,16 @@
             flex-grow: 1; position: relative; overflow: hidden;
             background: radial-gradient(circle at center, #546e7a, #263238);
             display: flex; justify-content: center; align-items: center;
+            cursor: grab;
         }
+        #game-viewport:active {
+            cursor: grabbing;
+        }
+
         .iso-world {
             position: relative; transform-style: preserve-3d;
-            transform: scale(1.3) rotateX(60deg) rotateZ(-45deg) translateZ(-100px);
-            width: 0; height: 0; transition: transform 0.5s;
+            width: 0; height: 0;
+            /* Transition rimossa per drag fluido */
         }
 
         /* --- ROOMS --- */
@@ -133,7 +138,6 @@
             position: absolute; transform-style: preserve-3d;
             background-color: #7f8c8d; border: 2px solid rgba(255,255,255,0.2);
             box-shadow: -10px 10px 20px rgba(0,0,0,0.5), -1px 1px 0 #555, -2px 2px 0 #444;
-            /* CRITICAL FIX: Base Z-Index Low */
             z-index: 0;
         }
         .room:hover { filter: brightness(1.1); }
@@ -155,7 +159,6 @@
         .entity {
             position: absolute; width: 0; height: 0; transform-style: preserve-3d;
             transition: top 0.4s linear, left 0.4s linear;
-            /* CRITICAL FIX: Ensure entities are above rooms */
             z-index: 1000;
         }
 
@@ -341,7 +344,21 @@
 
     // --- ASSETS ---
     const svgChachi = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><g><path d="M25,50 Q10,20 25,10" stroke="#7f8c8d" stroke-width="4" fill="none"/><path d="M25,50 C25,40 70,40 75,55 C75,70 30,75 25,50" fill="#95a5a6"/><path d="M30,65 L30,90" stroke="#7f8c8d" stroke-width="6" stroke-linecap="round"/><path d="M65,65 L65,90" stroke="#7f8c8d" stroke-width="6" stroke-linecap="round"/><circle cx="75" cy="40" r="16" fill="#95a5a6"/><path d="M65,30 L62,10 L75,25 Z" fill="#7f8c8d"/><path d="M85,30 L88,10 L75,25 Z" fill="#7f8c8d"/><circle cx="80" cy="38" r="3" fill="#FFD700"/></g></svg>`;
-    const svgMapache = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><g><path d="M20,45 Q5,20 20,10" stroke="#3e2723" stroke-width="6" fill="none"/><path d="M30,65 L30,90" stroke="#3e2723" stroke-width="8" stroke-linecap="round"/><path d="M65,65 L65,90" stroke="#3e2723" stroke-width="8" stroke-linecap="round"/><path d="M20,45 C20,30 80,30 80,55 C80,75 25,75 20,45" fill="#d7ccc8"/><circle cx="80" cy="40" r="18" fill="#3e2723"/><ellipse cx="85" cy="45" rx="6" ry="4" fill="white"/><path d="M70,30 L65,10 L80,25 Z" fill="#3e2723"/><path d="M90,30 L95,10 L80,25 Z" fill="#3e2723"/><circle cx="82" cy="36" r="3" fill="#00BFFF"/></g></svg>`;
+    
+    // MODIFICA: MAPACHE CORRETTO (Muso dentro i bordi, elementi collegati)
+    const svgMapache = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><g>
+    <path d="M20,55 Q5,25 20,15" stroke="#3e2723" stroke-width="6" fill="none"/>
+    <path d="M30,65 L30,90" stroke="#3e2723" stroke-width="8" stroke-linecap="round"/>
+    <path d="M65,65 L65,90" stroke="#3e2723" stroke-width="8" stroke-linecap="round"/>
+    <path d="M20,55 C20,35 80,35 80,55 C80,75 25,75 20,55" fill="#d7ccc8"/>
+    <circle cx="82" cy="45" r="16" fill="#d7ccc8"/>
+    <circle cx="84" cy="45" r="14" fill="#3e2723"/>
+    <path d="M72,35 L68,15 L80,30 Z" fill="#3e2723"/>
+    <path d="M88,35 L94,15 L82,30 Z" fill="#3e2723"/>
+    <ellipse cx="92" cy="50" rx="6" ry="4" fill="white"/>
+    <circle cx="88" cy="42" r="3" fill="#00BFFF"/>
+    </g></svg>`;
+
     const svgLilu = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><g><path d="M15,50 Q5,30 15,20" stroke="black" stroke-width="5" fill="none"/><path d="M30,70 L30,90" stroke="black" stroke-width="8" stroke-linecap="round"/><path d="M65,70 L65,90" stroke="black" stroke-width="8" stroke-linecap="round"/><ellipse cx="50" cy="55" rx="35" ry="30" fill="#111"/><circle cx="80" cy="45" r="18" fill="#111"/><path d="M70,30 L65,10 L80,25 Z" fill="black"/><path d="M90,30 L95,10 L80,25 Z" fill="black"/><circle cx="85" cy="40" r="3" fill="#FFD700"/></g></svg>`;
     const svgBebu = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><g transform="scale(0.6) translate(30,50)"><path d="M25,45 Q15,20 25,10" stroke="black" stroke-width="4" fill="none"/><path d="M30,65 L30,90" stroke="black" stroke-width="6" stroke-linecap="round"/><path d="M65,65 L65,90" stroke="black" stroke-width="6" stroke-linecap="round"/><rect x="25" y="45" width="50" height="25" rx="10" fill="#111"/><circle cx="80" cy="40" r="22" fill="#111"/><path d="M65,25 L60,5 L75,25 Z" fill="black"/><path d="M95,25 L100,5 L85,25 Z" fill="black"/><circle cx="85" cy="38" r="5" fill="#FFD700"/></g></svg>`;
     const svgToUrl = (s) => "data:image/svg+xml;charset=utf-8," + encodeURIComponent(s);
@@ -360,6 +377,8 @@
         time: { h: 8, m: 0 },
         logHistory: [],
         toxicCloudActive: false,
+        // Drag settings
+        drag: { active: false, currentX: 50, currentY: -300, startX: 0, startY: 0 },
 
         rooms: [
             { id: 'office', x: -400, y: -400, w: 200, h: 250, nameKey: 'r_office', type: 'floor-wood' },
@@ -398,9 +417,38 @@
             setTimeout(() => { document.getElementById('loading-screen').style.opacity = 0; setTimeout(() => document.getElementById('loading-screen').style.display = 'none', 1000); }, 2000);
             this.changeLanguage('it');
             this.renderWorld();
+            this.initDrag(); // MODIFICA: Inizializza il drag
             setInterval(() => this.tick(), 500);
             setInterval(() => this.aiDecide(), 1000);
             setInterval(() => this.updateClock(), 1000);
+        },
+
+        initDrag() {
+            const vp = document.getElementById('game-viewport');
+            const world = document.getElementById('world');
+            
+            // Applica trasformazione iniziale
+            world.style.transform = `scale(1.3) rotateX(60deg) rotateZ(-45deg) translateZ(-100px) translateX(${this.drag.currentX}px) translateY(${this.drag.currentY}px)`;
+
+            vp.addEventListener('mousedown', (e) => {
+                if(e.target.closest('.entity') || e.target.closest('.room')) {
+                    // Cliccato su oggetto/stanza?
+                }
+                this.drag.active = true;
+                this.drag.startX = e.clientX - this.drag.currentX;
+                this.drag.startY = e.clientY - this.drag.currentY;
+            });
+
+            vp.addEventListener('mousemove', (e) => {
+                if(!this.drag.active) return;
+                e.preventDefault();
+                this.drag.currentX = e.clientX - this.drag.startX;
+                this.drag.currentY = e.clientY - this.drag.startY;
+                world.style.transform = `scale(1.3) rotateX(60deg) rotateZ(-45deg) translateZ(-100px) translateX(${this.drag.currentX}px) translateY(${this.drag.currentY}px)`;
+            });
+
+            vp.addEventListener('mouseup', () => { this.drag.active = false; });
+            vp.addEventListener('mouseleave', () => { this.drag.active = false; });
         },
 
         updateClock() {
@@ -464,6 +512,8 @@
 
         renderWorld() {
             const world = document.getElementById('world'); world.innerHTML = '';
+            world.style.transform = `scale(1.3) rotateX(60deg) rotateZ(-45deg) translateZ(-100px) translateX(${this.drag.currentX}px) translateY(${this.drag.currentY}px)`;
+
             this.rooms.forEach(r => {
                 const el = document.createElement('div'); el.className = `room ${r.type}`;
                 el.style.left = r.x + 'px'; el.style.top = r.y + 'px'; el.style.width = r.w + 'px'; el.style.height = r.h + 'px';
@@ -476,7 +526,7 @@
                 el.title = translations[currentLang][i.nameKey];
                 const room = this.rooms.find(r => r.id === i.room);
                 el.style.left = (room.x + i.rx) + 'px'; el.style.top = (room.y + i.ry) + 'px';
-
+                
                 el.style.zIndex = Math.floor(1000 + room.y + i.ry);
 
                 if(i.type !== 'Bed') {
@@ -506,7 +556,7 @@
             this.updatePositions();
         },
 
-
+        
         selectCat(id) {
             this.selectedId = id;
             this.updatePositions();
@@ -545,7 +595,7 @@
             this.updateUI();
             this.renderWorld();
         },
-
+        
 
         createEntity(id, content, isItem, catName = '') {
             const el = document.createElement('div'); el.className = 'entity'; el.id = id;
@@ -578,7 +628,7 @@
                 const room = this.rooms.find(r => r.id === c.room);
                 const el = document.getElementById(`cat-${c.id}`);
                 el.style.left = (room.x + c.rx) + 'px'; el.style.top = (room.y + c.ry) + 'px';
-
+                
                 el.style.zIndex = Math.floor(1000 + room.y + c.ry);
 
                 el.classList.remove('selected', 'angry', 'hungry', 'thirsty', 'grooming', 'sleep');
