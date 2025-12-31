@@ -1,0 +1,7 @@
+# wrangler.toml
+
+# ... (keep your existing settings like name, main, etc.) ...
+
+[rules]
+  # This rule allows the worker to import .html files as text strings
+  { type = "Text", globs = ["**/*.html"], fallthrough = true }
