@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cat House - Game</title>
+    <style>
+        :root {
+            --bg-color: #1a1a1a;
+            --ui-bg: #2d2d2d;
+            --highlight: #f1c40f;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: var(--bg-color);
+            color: white;
+            margin: 0; padding: 0;
+            overflow: hidden;
+            display: flex; flex-direction: column; height: 100vh;
+        }
+
+        /* --- STINK OVERLAY --- */
+        #stink-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle, rgba(50, 205, 50, 0.4), rgba(0, 50, 0, 0.8));
+            z-index: 4000; pointer-events: none; display: none;
+            animation: pulse-stink 2s infinite;
+        }
+        @keyframes pulse-stink { 0% { opacity: 0.5; } 50% { opacity: 0.8; } 100% { opacity: 0.5; } }
+
+        /* --- UI PANEL --- */
+        #ui-panel {
+            background: var(--ui-bg); border-bottom: 4px solid #000;
+            padding: 10px 20px; display: grid; grid-template-columns: 1fr auto 1fr;
+            align-items: center; height: 80px; z-index: 6000;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.5); position: relative;
+        }
+
+        .stat-group { font-size: 13px; font-weight: bold; color: #fff; margin-right: 15px; display: inline-block; }
+        .bar-frame { width: 90px; height: 8px; background: #000; border: 2px solid #555; margin-top: 4px; border-radius: 4px; overflow: hidden; }
+        .bar-fill { height: 100%; width: 0%; transition: width 0.3s; }
+        #bar-chaos { background: linear-gradient(90deg, #e67e22, #c0392b); }
+        #bar-lilu { background: #27ae60; }
+        #bar-bebu { background: #8e44ad; }
+
+        #clock-display {
+            background: #000; color: #0f0; font-family: 'Courier New', monospace;
+            font-size: 22px; font-weight: bold; padding: 4px 12px; border: 2px solid #555;
+            border-radius: 5px; letter-spacing: 2px;
+        }
+
+        .btn {
+            background: #f1c40f; border: 2px solid #b7950b; border-bottom-width: 4px;
+            color: #222; font-weight: 800; padding: 8px 16px; cursor: pointer;
+            margin: 0 5px; text-transform: uppercase; font-size: 11px; border-radius: 6px;
+        }
+        .btn:active { transform: translateY(3px); border-bottom-width: 2px; }
+
+        #lang-select {
+            position: absolute; top: 10px; right: 10px;
+            background: #333; color: white; border: 1px solid #555;
+            padding: 5px; border-radius: 4px; font-size: 12px; cursor: pointer; z-index: 7000;
+        }
+
+        #log-area {
+            position: absolute; top: 100px; left: 20px; width: 350px; height: 150px; pointer-events: none;
+            display: flex; flex-direction: column-reverse; font-family: monospace; font-size: 14px;
+            text-shadow: 2px 2px 0px black; z-index: 6000;
+        }
+        .log-msg { margin-top: 2px; color: #fff; font-weight: bold; }
+
+        /* --- FOOTER --- */
+        #footer {
+            position: absolute; bottom: 10px; right: 15px;
+            font-size: 12px;
+            /* MODIFICA: Colore cambiato in giallo (#f1c40f) */
+            color: #f1c40f;
+            z-index: 8000;
+            text-align: right; pointer-events: auto; font-family: monospace;
+        }
+        #footer a { color: #f1c40f; text-decoration: none; cursor: pointer; border-bottom: 1px dotted #f1c40f; }
+        #footer a:hover { color: white; border-bottom: 1px solid white; }
+
+        /* --- LICENSE MODAL --- */
+        #license-modal {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); z-index: 10000; justify-content: center; align-items: center; backdrop-filter: blur(5px);
+        }
+        .license-content {
+            background: #2d2d2d; padding: 30px; border-radius: 8px; max-width: 600px; width: 80%;
+            color: #ccc; font-family: monospace; font-size: 12px; line-height: 1.5;
+            border: 1px solid #555; box-shadow: 0 0 30px black; position: relative;
+            max-height: 80vh; overflow-y: auto;
+        }
+        .close-license {
+            position: absolute; top: 10px; right: 15px; color: #f1c40f; font-size: 24px; cursor: pointer; font-weight: bold;
+        }
+
+        /* --- LOADING SCREEN --- */
+        #loading-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #222; z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; transition: opacity 1s;
+        }
+        .loading-scene { position: relative; width: 300px; height: 300px; perspective: 600px; display: flex; justify-content: center; align-items: center; }
+        .loading-leg { position: absolute; width: 20px; height: 120px; background: #3e2723; top: 50%; left: 50%; transform: translate(-50%, -20px); z-index: 0; }
+        .loading-base { position: absolute; width: 100px; height: 100px; background: #3e2723; top: 50%; left: 50%; border-radius: 50%; transform: translate(-50%, 80px) rotateX(75deg); box-shadow: 0 10px 20px black; z-index: 0; }
+        .loading-table { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotateX(65deg); width: 220px; height: 220px; background: #5d4037; border-radius: 50%; border: 10px solid #3e2723; box-shadow: 0 20px 0 #2d1e1a; z-index: 1; }
+        .loading-bebu { position: absolute; top: 50%; left: 50%; width: 100px; height: 100px; z-index: 10; animation: runCircle 1.5s linear infinite; }
+        .loading-bebu svg { width: 100%; height: 100%; filter: drop-shadow(0 15px 10px rgba(0,0,0,0.6)); }
+        @keyframes runCircle {
+            0% { transform: translate(-50%, -50%) rotate(0deg) translateX(130px) rotate(0deg); z-index: 20;}
+            25% { transform: translate(-50%, -50%) rotate(90deg) translateX(130px) rotate(-90deg); z-index: 0;}
+            50% { transform: translate(-50%, -50%) rotate(180deg) translateX(130px) rotate(-180deg) scale(0.85); z-index: 0;}
+            75% { transform: translate(-50%, -50%) rotate(270deg) translateX(130px) rotate(-270deg); z-index: 20;}
+            100% { transform: translate(-50%, -50%) rotate(360deg) translateX(130px) rotate(-360deg); z-index: 20;}
+        }
+
+        /* --- ISO VIEWPORT --- */
+        #game-viewport {
+            flex-grow: 1; position: relative; overflow: hidden;
+            background: radial-gradient(circle at center, #546e7a, #263238);
+            display: flex; justify-content: center; align-items: center;
+        }
+        .iso-world {
+            position: relative; transform-style: preserve-3d;
+            transform: scale(1.3) rotateX(60deg) rotateZ(-45deg) translateZ(-100px);
+            width: 0; height: 0; transition: transform 0.5s;
+        }
+
+        /* --- ROOMS --- */
+        .room {
+            position: absolute; transform-style: preserve-3d;
+            background-color: #7f8c8d; border: 2px solid rgba(255,255,255,0.2);
+            box-shadow: -10px 10px 20px rgba(0,0,0,0.5), -1px 1px 0 #555, -2px 2px 0 #444;
+            /* CRITICAL FIX: Base Z-Index Low */
+            z-index: 0;
+        }
+        .room:hover { filter: brightness(1.1); }
+        .floor-wood { background: repeating-linear-gradient(90deg, #5d4037, #5d4037 18px, #3e2723 19px, #3e2723 20px); }
+        .floor-tile { background: conic-gradient(#ecf0f1 0.25turn, #bdc3c7 0.25turn 0.5turn, #ecf0f1 0.5turn 0.75turn, #bdc3c7 0.75turn); background-size: 50px 50px; }
+        .floor-grass { background: #2ecc71; border: 4px solid #27ae60; background-image: radial-gradient(#27ae60 15%, transparent 15%); background-size: 20px 20px; }
+        .floor-carpet { background: radial-gradient(#3498db 20%, #2980b9 21%); background-size: 15px 15px; background-color: #2980b9; }
+
+        .room-label {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%) rotateZ(45deg) rotateX(-60deg) translateZ(50px);
+            background: rgba(0,0,0,0.5); color: #ccc; padding: 2px 5px; border-radius: 4px;
+            font-size: 12px; font-weight: bold; pointer-events: none; white-space: nowrap;
+            opacity: 0; transition: opacity 0.2s;
+        }
+        .room:hover .room-label { opacity: 1; }
+
+        /* --- ENTITIES --- */
+        .entity {
+            position: absolute; width: 0; height: 0; transform-style: preserve-3d;
+            transition: top 0.4s linear, left 0.4s linear;
+            /* CRITICAL FIX: Ensure entities are above rooms */
+            z-index: 1000;
+        }
+
+        /* ITEMS */
+        .item-sprite {
+            position: absolute; left: -20px; top: -40px; width: 40px; height: 40px;
+            transform: rotateZ(45deg) rotateX(-60deg); transform-origin: bottom center;
+            pointer-events: auto; cursor: pointer; filter: drop-shadow(0 5px 5px rgba(0,0,0,0.8));
+            transition: transform 0.1s;
+        }
+        .item-sprite:hover { transform: rotateZ(45deg) rotateX(-60deg) scale(1.2); }
+        .item-sprite svg { width: 100%; height: 100%; }
+
+        .item-label {
+            position: absolute; bottom: -25px; left: 50%; transform: translateX(-50%) translateZ(50px);
+            font-size: 10px; background: rgba(0,0,0,0.8); padding: 1px 4px; border-radius: 3px;
+            white-space: nowrap; color: #f1c40f; font-weight: bold; pointer-events: none;
+            opacity: 0; transition: opacity 0.2s;
+        }
+        .item-sprite:hover .item-label { opacity: 1; }
+
+        /* CATS */
+        .cat-sprite {
+            position: absolute; left: -50px; top: -100px; width: 100px; height: 100px;
+            transform: rotateZ(45deg) rotateX(-60deg); transform-origin: bottom center;
+            pointer-events: auto; cursor: pointer; filter: drop-shadow(0 5px 10px rgba(0,0,0,0.6));
+            transition: transform 0.2s;
+        }
+        .cat-sprite:hover { transform: rotateZ(45deg) rotateX(-60deg) scale(1.1); }
+        .cat-sprite svg { width: 100%; height: 100%; filter: drop-shadow(0 0 1px white); }
+        .face-left .cat-sprite svg { transform: scaleX(1); }
+        .face-right .cat-sprite svg { transform: scaleX(-1); }
+
+        .cat-name-label {
+            position: absolute; top: -140px; left: 50%;
+            transform: translateX(-50%) rotateZ(45deg) rotateX(-60deg) translateZ(150px);
+            font-size: 14px; background: rgba(0,0,0,0.85); padding: 3px 8px; border-radius: 6px;
+            white-space: nowrap; color: white; font-weight: 900; pointer-events: none;
+            border: 1px solid #f1c40f; opacity: 0; transition: opacity 0.2s;
+        }
+        .entity:hover .cat-name-label, .entity.selected .cat-name-label { opacity: 1; }
+
+        /* HEALTH BAR */
+        .health-bar-container {
+            position: absolute; top: -20px; left: 50%; transform: translateX(-50%) translateZ(120px);
+            width: 40px; height: 5px; background: black; border: 1px solid white; border-radius: 3px;
+            display: block; pointer-events: none;
+        }
+        .health-bar-fill { height: 100%; width: 100%; background: #2ecc71; transition: width 0.3s, background 0.3s; }
+
+        /* BUBBLES */
+        .bubble {
+            position: absolute; top: -60px; left: 50%;
+            transform: translateX(-50%) translateZ(150px);
+            background: white; border-width: 2px; border-style: solid; font-weight: 900;
+            padding: 2px 5px; border-radius: 5px; font-size: 16px; display: none;
+            white-space: nowrap; animation: bounce 0.5s infinite;
+        }
+        .anger-bubble { border-color: red; color: red; }
+        .hungry-bubble { border-color: #e67e22; color: #e67e22; }
+        .love-bubble { border-color: #e91e63; color: #e91e63; }
+        .sleep-bubble { border-color: #3498db; color: #3498db; animation: floatZ 3s infinite; }
+        .thirst-bubble { border-color: #3498db; color: #3498db; }
+
+        .entity.angry .anger-bubble { display: block; }
+        .entity.hungry .hungry-bubble { display: block; }
+        .entity.thirsty .thirst-bubble { display: block; }
+        .entity.grooming .love-bubble { display: block; }
+        .entity.sleep .sleep-bubble { display: block; }
+
+        @keyframes bounce { 0%, 100% { transform:translateX(-50%) translateY(0) translateZ(150px); } 50% { transform:translateX(-50%) translateY(-5px) translateZ(150px); } }
+        @keyframes floatZ { 0% { transform:translateX(-50%) translateY(0) translateZ(150px); opacity:1; } 50% { transform:translateX(-50%) translateY(-20px) translateZ(150px); opacity:1; } 100% { transform:translateX(-50%) translateY(-30px) translateZ(150px); opacity:0; } }
+
+        .cat-shadow {
+            position: absolute; width: 60px; height: 30px; background: rgba(0,0,0,0.5); border-radius: 50%;
+            top: -15px; left: -30px; transform: translateZ(1px);
+        }
+        .selection-ring {
+            position: absolute; width: 60px; height: 60px; border: 4px solid #f1c40f; border-radius: 50%; top: -30px; left: -30px;
+            opacity: 0; box-shadow: 0 0 15px #f1c40f; transform: translateZ(2px);
+        }
+        .entity.selected .selection-ring { opacity: 1; animation: pulse 1s infinite; }
+        @keyframes pulse { 0% { transform: scale(1) translateZ(2px); } 50% { transform: scale(1.1) translateZ(2px); } 100% { transform: scale(1) translateZ(2px); } }
+
+        .percent-badge {
+            position: absolute; top: -15px; left: 50%;
+            transform: translateX(-50%) translateZ(100px);
+            font-size: 10px; font-weight: bold; background: #27ae60; color: white;
+            padding: 2px 4px; border-radius: 4px; border: 1px solid white; white-space: nowrap;
+        }
+        .badge-bad { background: #c0392b; animation: shake 0.5s infinite; }
+        @keyframes shake { 0% { transform:translateX(-52%) translateZ(100px); } 50% { transform:translateX(-48%) translateZ(100px); } 100% { transform:translateX(-50%) translateZ(100px); } }
+
+        .timer-badge {
+            position: absolute; top: -45px; left: 50%; transform: translateX(-50%) translateZ(120px);
+            font-size: 16px; font-weight: 900; color: white; background: red;
+            padding: 4px 8px; border-radius: 50%; border: 2px solid yellow;
+            animation: pulse-timer 0.5s infinite; display: none;
+        }
+        .timer-active .timer-badge { display: block; }
+        @keyframes pulse-timer { 0%{transform: translateX(-50%) translateZ(100px) scale(1);} 50%{transform: translateX(-50%) translateZ(100px) scale(1.2);} }
+
+    </style>
+</head>
+<body>
+
+<div id="stink-overlay"></div>
+
+<div id="loading-screen">
+    <div class="loading-scene">
+        <div class="loading-leg"></div><div class="loading-base"></div><div class="loading-table"></div>
+        <div class="loading-bebu" id="loading-bebu-container"></div>
+    </div>
+    <h2 style="margin-top: 30px; color: #f1c40f; font-family: monospace;">LOADING BEBU...</h2>
+</div>
+
+<div id="footer">
+    &copy; 2025 CoderForge.org Ltd<br>
+    <a onclick="showLicense()">MIT License</a>
+</div>
+
+<div id="license-modal">
+    <div class="license-content">
+        <span class="close-license" onclick="closeLicense()">&times;</span>
+        <h3 style="color: #f1c40f; margin-top: 0;">MIT License</h3>
+        <p>Copyright (c) 2025 CoderForge.org Ltd</p>
+        <p>Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:</p>
+        <p>The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.</p>
+        <p>THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.</p>
+    </div>
+</div>
+
+<select id="lang-select" onchange="game.changeLanguage(this.value)">
+    <option value="en">🇬🇧 English</option>
+    <option value="it" selected>🇮🇹 Italiano</option>
+    <option value="es">🇪🇸 Español</option>
+</select>
+
+<div id="ui-panel">
+    <div>
+        <div class="stat-group"><span data-t="chaos">CHAOS</span> <div class="bar-frame"><div id="bar-chaos" class="bar-fill"></div></div></div>
+        <div class="stat-group"><span data-t="fatness">CICCIA</span> <div class="bar-frame"><div id="bar-lilu" class="bar-fill"></div></div></div>
+        <div class="stat-group"><span data-t="scream">URLO</span> <div class="bar-frame"><div id="bar-bebu" class="bar-fill"></div></div></div>
+    </div>
+    <div style="text-align: center; display: flex; flex-direction: column; align-items: center;">
+        <h2 style="margin:0; letter-spacing: 2px; color: #f1c40f; font-size: 18px;">CAT HOUSE</h2>
+        <div id="clock-display">08:00</div>
+    </div>
+    <div>
+        <button class="btn" onclick="game.hushBebu()">🤫 <span data-t="hush">ZITTISCI</span></button>
+        <button class="btn" id="btn-massage" onclick="game.massageMapache()">💆 <span data-t="massage">MASSAGGIO</span></button>
+    </div>
+</div>
+
+<div id="log-area"></div>
+
+<div id="game-viewport">
+    <div class="sky-elements" id="sky-box" style="position: absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; opacity:0; transition: opacity 2s;">
+        <div style="position: absolute; top: 20px; right: 20px; width: 50px; height: 50px; background: #f1c40f; border-radius: 50%; box-shadow: 0 0 10px #f1c40f;"></div>
+        <div style="position:absolute; top:50px; left:100px; width:2px; height:2px; background:white;"></div>
+        <div style="position:absolute; top:80px; left:300px; width:2px; height:2px; background:white;"></div>
+        <div style="position:absolute; top:20px; right:300px; width:2px; height:2px; background:white;"></div>
+    </div>
+    <div class="iso-world" id="world"></div>
+</div>
+
+<script>
+    function showLicense() { document.getElementById('license-modal').style.display = 'flex'; }
+    function closeLicense() { document.getElementById('license-modal').style.display = 'none'; }
+
+    const translations = {
+        en: { chaos: "CHAOS", fatness: "FATNESS", scream: "SCREAM", hush: "HUSH", massage: "MASSAGE", wait: "WAIT", waterRefill: "Water Refilled", litterClean: "Litter Cleaned", foodRefill: "Food Refilled", fight: "FIGHT!", mapacheGarden: "Mapache bothering neighbors!", liluEat: "Lilu is stealing food!", hungry: "is hungry!", thirsty: "is thirsty!", drinking: "is drinking", hushBebu: "Hushed Bebu", massageMap: "Massaged Mapache", scratchReplace: "Scratcher Replaced", catnipReplace: "Catnip Replaced", scratching: "is scratching", grooming: "is grooming Lilu", playing: "playing in tunnel", chachiWake: "CHACHI WANTS FOOD!", sleeping: "is sleeping", starvation: "SICKNESS! Health 0.", liluPoop: "LILU POOPED! CLEAN FAST!", stink: "TOXIC FUMES!", foxFight: "Mapache fighting foxes!",
+            l_food: "Food", l_water: "Fountain", l_litter: "Litter", l_post: "Post", l_board: "Board", l_tunnel: "Tunnel", l_bed: "Bed", l_catnip: "Catnip",
+            r_office: "Office", r_master: "Master Bed", r_smallbed: "Small Bed", r_snooker: "Snooker", r_hall: "Hallway", r_kitchen: "Kitchen", r_dining: "Dining", r_living: "Living", r_garden: "Garden" },
+        it: { chaos: "CAOS", fatness: "CICCIA", scream: "URLO", hush: "ZITTISCI", massage: "MASSAGGIO", wait: "ATTENDI", waterRefill: "Acqua Riempiuta", litterClean: "Lettiera Pulita", foodRefill: "Cibo Riempiuto", fight: "LOTTA!", mapacheGarden: "Mapache da fastidio ai vicini!", liluEat: "Lilu sta rubando cibo!", hungry: "ha fame!", thirsty: "ha sete!", drinking: "sta bevendo", hushBebu: "Bebu Calmato", massageMap: "Mapache Massaggiato", scratchReplace: "Tiragraffi Sostituito", catnipReplace: "Erba Gatta Sostituita", scratching: "si fa le unghie", grooming: "pulisce Lilu", playing: "gioca nel tunnel", chachiWake: "CHACHI VUOLE CIBO!", sleeping: "dorme", starvation: "MALATTIA! Salute a 0.", liluPoop: "LILU HA FATTO LA CACCA! PULISCI!", stink: "NUBE TOSSICA!", foxFight: "Mapache litiga con le volpi!",
+            l_food: "Cibo", l_water: "Fontanella", l_litter: "Lettiera", l_post: "Palo", l_board: "Tavola", l_tunnel: "Tunnel", l_bed: "Letto", l_catnip: "Erba Gatta",
+            r_office: "Ufficio", r_master: "Camera Letto", r_smallbed: "Cameretta", r_snooker: "Biliardo", r_hall: "Ingresso", r_kitchen: "Cucina", r_dining: "Pranzo", r_living: "Salotto", r_garden: "Giardino" },
+        es: { chaos: "CAOS", fatness: "GORDURA", scream: "GRITO", hush: "CALLAR", massage: "MASAJE", wait: "ESPERA", waterRefill: "Agua Rellenada", litterClean: "Arena Limpia", foodRefill: "Comida Rellenada", fight: "PELEA!", mapacheGarden: "Mapache molesta vecinos!", liluEat: "Lilu roba comida!", hungry: "tiene hambre!", thirsty: "tiene sed!", drinking: "está bebiendo", hushBebu: "Bebu Calmado", massageMap: "Mapache Masajeado", scratchReplace: "Rascador Reemplazado", catnipReplace: "Hierba Gatera Reemplazada", scratching: "está rascando", grooming: "está aseando a Lilu", playing: "jugando en el túnel", chachiWake: "CHACHI QUIERE COMIDA!", sleeping: "duerme", starvation: "ENFERMEDAD! Salud 0.", liluPoop: "LILU HIZO CACA! LIMPIA!", stink: "GAS TÓXICO!", foxFight: "Mapache pelea con zorros!",
+            l_food: "Comida", l_water: "Fuente", l_litter: "Arena", l_post: "Poste", l_board: "Tabla", l_tunnel: "Túnel", l_bed: "Cama", l_catnip: "Hierba",
+            r_office: "Oficina", r_master: "Dormitorio", r_smallbed: "Cuarto Peq.", r_snooker: "Billar", r_hall: "Pasillo", r_kitchen: "Cocina", r_dining: "Comedor", r_living: "Sala", r_garden: "Jardín" }
+    };
+    let currentLang = 'it';
+
+    // --- ASSETS ---
+    const svgChachi = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><g><path d="M25,50 Q10,20 25,10" stroke="#7f8c8d" stroke-width="4" fill="none"/><path d="M25,50 C25,40 70,40 75,55 C75,70 30,75 25,50" fill="#95a5a6"/><path d="M30,65 L30,90" stroke="#7f8c8d" stroke-width="6" stroke-linecap="round"/><path d="M65,65 L65,90" stroke="#7f8c8d" stroke-width="6" stroke-linecap="round"/><circle cx="75" cy="40" r="16" fill="#95a5a6"/><path d="M65,30 L62,10 L75,25 Z" fill="#7f8c8d"/><path d="M85,30 L88,10 L75,25 Z" fill="#7f8c8d"/><circle cx="80" cy="38" r="3" fill="#FFD700"/></g></svg>`;
+    const svgMapache = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><g><path d="M20,45 Q5,20 20,10" stroke="#3e2723" stroke-width="6" fill="none"/><path d="M30,65 L30,90" stroke="#3e2723" stroke-width="8" stroke-linecap="round"/><path d="M65,65 L65,90" stroke="#3e2723" stroke-width="8" stroke-linecap="round"/><path d="M20,45 C20,30 80,30 80,55 C80,75 25,75 20,45" fill="#d7ccc8"/><circle cx="80" cy="40" r="18" fill="#3e2723"/><ellipse cx="85" cy="45" rx="6" ry="4" fill="white"/><path d="M70,30 L65,10 L80,25 Z" fill="#3e2723"/><path d="M90,30 L95,10 L80,25 Z" fill="#3e2723"/><circle cx="82" cy="36" r="3" fill="#00BFFF"/></g></svg>`;
+    const svgLilu = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><g><path d="M15,50 Q5,30 15,20" stroke="black" stroke-width="5" fill="none"/><path d="M30,70 L30,90" stroke="black" stroke-width="8" stroke-linecap="round"/><path d="M65,70 L65,90" stroke="black" stroke-width="8" stroke-linecap="round"/><ellipse cx="50" cy="55" rx="35" ry="30" fill="#111"/><circle cx="80" cy="45" r="18" fill="#111"/><path d="M70,30 L65,10 L80,25 Z" fill="black"/><path d="M90,30 L95,10 L80,25 Z" fill="black"/><circle cx="85" cy="40" r="3" fill="#FFD700"/></g></svg>`;
+    const svgBebu = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><g transform="scale(0.6) translate(30,50)"><path d="M25,45 Q15,20 25,10" stroke="black" stroke-width="4" fill="none"/><path d="M30,65 L30,90" stroke="black" stroke-width="6" stroke-linecap="round"/><path d="M65,65 L65,90" stroke="black" stroke-width="6" stroke-linecap="round"/><rect x="25" y="45" width="50" height="25" rx="10" fill="#111"/><circle cx="80" cy="40" r="22" fill="#111"/><path d="M65,25 L60,5 L75,25 Z" fill="black"/><path d="M95,25 L100,5 L85,25 Z" fill="black"/><circle cx="85" cy="38" r="5" fill="#FFD700"/></g></svg>`;
+    const svgToUrl = (s) => "data:image/svg+xml;charset=utf-8," + encodeURIComponent(s);
+
+    const svgFood = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M10,60 Q50,90 90,60 L90,50 Q50,80 10,50 Z" fill="#d35400"/><path d="M10,50 Q50,80 90,50 Q50,20 10,50" fill="#e67e22"/><circle cx="40" cy="50" r="6" fill="#5d4037"/><circle cx="60" cy="55" r="7" fill="#5d4037"/></svg>`;
+    const svgWater = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M10,60 Q50,90 90,60 L90,50 Q50,80 10,50 Z" fill="#2980b9"/><path d="M10,50 Q50,80 90,50 Q50,20 10,50" fill="#3498db"/><path d="M45,50 L45,20 L55,20 L55,50" fill="#ecf0f1"/></svg>`;
+    const svgLitter = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M10,70 L30,40 L90,40 L70,70 Z" fill="#5d4037"/><path d="M15,65 L32,45 L85,45 L68,65 Z" fill="#9e9e9e"/></svg>`;
+    const svgPost = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M20,80 L50,90 L80,80 L50,70 Z" fill="#5d4037"/><rect x="40" y="20" width="20" height="60" fill="#d7ccc8"/><path d="M40,20 L60,20 L50,15 Z" fill="#a1887f"/></svg>`;
+    const svgBoard = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M10,60 L90,60 L80,80 L0,80 Z" fill="#d7ccc8"/><path d="M15,65 L85,65" stroke="#8d6e63" stroke-width="2"/></svg>`;
+    const svgTunnel = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="tunGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ec407a"/><stop offset="1" stop-color="#ad1457"/></linearGradient></defs><ellipse cx="20" cy="50" rx="10" ry="20" fill="none" stroke="#880e4f" stroke-width="2"/><path d="M20,30 L80,30 L80,70 L20,70 Z" fill="url(#tunGrad)" stroke="#880e4f" stroke-width="1"/><ellipse cx="40" cy="50" rx="10" ry="20" fill="none" stroke="#f06292" stroke-width="2"/><ellipse cx="60" cy="50" rx="10" ry="20" fill="none" stroke="#f06292" stroke-width="2"/><ellipse cx="80" cy="50" rx="10" ry="20" fill="#333" stroke="#f8bbd0" stroke-width="3"/><circle cx="50" cy="35" r="8" fill="#333" stroke="#f8bbd0" stroke-width="2"/></svg>`;
+    const svgBed = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M10,40 L90,40 L90,90 L10,90 Z" fill="#5e35b1" stroke="#311b92" stroke-width="2"/><rect x="10" y="20" width="80" height="25" fill="#311b92"/><rect x="15" y="45" width="30" height="20" fill="white" rx="5"/><rect x="55" y="45" width="30" height="20" fill="white" rx="5"/><path d="M10,70 L90,70 L90,90 L10,90 Z" fill="#9575cd" opacity="0.5"/></svg>`;
+    const svgCatnip = `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M30,80 L70,80 L65,50 L35,50 Z" fill="#8d6e63"/><path d="M35,50 Q20,20 50,10 Q80,20 65,50" fill="#4caf50"/><path d="M50,10 L50,50" stroke="#2e7d32" stroke-width="2"/></svg>`;
+
+    const game = {
+        chaos: 0, liluFat: 0, bebuScream: 0, selectedId: null, massageTimer: 0,
+        time: { h: 8, m: 0 },
+        logHistory: [],
+        toxicCloudActive: false,
+
+        rooms: [
+            { id: 'office', x: -400, y: -400, w: 200, h: 250, nameKey: 'r_office', type: 'floor-wood' },
+            { id: 'master', x: -200, y: -400, w: 200, h: 250, nameKey: 'r_master', type: 'floor-carpet' },
+            { id: 'smallbed', x: 0, y: -400, w: 150, h: 250, nameKey: 'r_smallbed', type: 'floor-carpet' },
+            { id: 'snooker', x: 150, y: -400, w: 250, h: 250, nameKey: 'r_snooker', type: 'floor-wood' },
+            { id: 'hall', x: -400, y: -150, w: 800, h: 150, nameKey: 'r_hall', type: 'floor-wood' },
+            { id: 'kitchen', x: -400, y: 0, w: 250, h: 250, nameKey: 'r_kitchen', type: 'floor-tile' },
+            { id: 'dining', x: -150, y: 0, w: 250, h: 250, nameKey: 'r_dining', type: 'floor-wood' },
+            { id: 'living', x: 100, y: 0, w: 300, h: 250, nameKey: 'r_living', type: 'floor-wood' },
+            { id: 'garden', x: -400, y: 250, w: 800, h: 400, nameKey: 'r_garden', type: 'floor-grass' }
+        ],
+
+        cats: [
+            { id: 'chachi', name: 'Chachi', svg: svgChachi, room: 'living', rx: 150, ry: 150, state:'idle', tx:0, ty:0, hunger: 20, thirst: 0, health: 100, cd:0 },
+            { id: 'mapache', name: 'Mapache', svg: svgMapache, room: 'garden', rx: 400, ry: 200, state:'idle', tx:0, ty:0, hunger: 20, thirst: 0, health: 100, cd:0 },
+            { id: 'lilu', name: 'Lilu', svg: svgLilu, room: 'master', rx: 150, ry: 150, state:'idle', tx:0, ty:0, hunger: 20, thirst: 0, health: 100, cd:0, digest:0 },
+            { id: 'bebu', name: 'Bebu', svg: svgBebu, room: 'kitchen', rx: 125, ry: 125, state:'idle', tx:0, ty:0, hunger: 20, thirst: 0, health: 100, cd:0 }
+        ],
+
+        items: [
+            { id: 'food', type: 'Food', room: 'snooker', rx: 125, ry: 125, svg: svgFood, val: 100, nameKey: 'l_food' },
+            { id: 'litter1', type: 'Litter', room: 'smallbed', rx: 75, ry: 75, svg: svgLitter, val: 0, nameKey: 'l_litter', stinkTimer: 0 },
+            { id: 'water1', type: 'Water', room: 'kitchen', rx: 50, ry: 50, svg: svgWater, val: 100, nameKey: 'l_water' },
+            { id: 'water2', type: 'Water', room: 'hall', rx: 600, ry: 50, svg: svgWater, val: 100, nameKey: 'l_water' },
+            { id: 'post1', type: 'Scratch', room: 'living', rx: 50, ry: 200, svg: svgPost, val: 100, nameKey: 'l_post' },
+            { id: 'post2', type: 'Scratch', room: 'hall', rx: 250, ry: 50, svg: svgPost, val: 100, nameKey: 'l_post' },
+            { id: 'board', type: 'Scratch', room: 'office', rx: 100, ry: 100, svg: svgBoard, val: 100, nameKey: 'l_board' },
+            { id: 'tunnel', type: 'Play', room: 'office', rx: 150, ry: 150, svg: svgTunnel, val: 100, nameKey: 'l_tunnel' },
+            { id: 'bed', type: 'Bed', room: 'master', rx: 100, ry: 125, svg: svgBed, val: 100, nameKey: 'l_bed' },
+            { id: 'catnip', type: 'Catnip', room: 'living', rx: 150, ry: 150, svg: svgCatnip, val: 100, nameKey: 'l_catnip' }
+        ],
+
+        init() {
+            document.getElementById('loading-bebu-container').innerHTML = svgBebu;
+            setTimeout(() => { document.getElementById('loading-screen').style.opacity = 0; setTimeout(() => document.getElementById('loading-screen').style.display = 'none', 1000); }, 2000);
+            this.changeLanguage('it');
+            this.renderWorld();
+            setInterval(() => this.tick(), 500);
+            setInterval(() => this.aiDecide(), 1000);
+            setInterval(() => this.updateClock(), 1000);
+        },
+
+        updateClock() {
+            this.time.m++;
+            if(this.time.m >= 60) { this.time.m = 0; this.time.h++; }
+            if(this.time.h >= 24) { this.time.h = 0; }
+            const h = this.time.h.toString().padStart(2,'0');
+            const m = this.time.m.toString().padStart(2,'0');
+            document.getElementById('clock-display').innerText = `${h}:${m}`;
+
+            const vp = document.getElementById('game-viewport');
+            const sky = document.getElementById('sky-box');
+            if(this.time.h >= 19 || this.time.h < 6) {
+                vp.style.background = "radial-gradient(circle at center, #2c3e50, #000000)";
+                sky.style.opacity = 1;
+            } else {
+                vp.style.background = "radial-gradient(circle at center, #87CEEB, #4682B4)";
+                sky.style.opacity = 0;
+            }
+
+            if(this.time.h === 7 && this.time.m === 0) {
+                const c = this.cats.find(x=>x.id==='chachi');
+                c.state = 'angry'; c.cd = 10;
+                this.log('chachiWake', '#e74c3c');
+                this.chaos += 20; this.updatePositions();
+            }
+        },
+
+        isSleepingTime() { return (this.time.h >= 15 && this.time.h < 17) || (this.time.h >= 0 && this.time.h < 7); },
+
+        changeLanguage(lang) {
+            currentLang = lang;
+            document.querySelectorAll('[data-t]').forEach(el => { const key = el.getAttribute('data-t'); if(translations[lang][key]) el.innerText = translations[lang][key]; });
+            this.items.forEach(i => {
+                const lbl = document.getElementById(`lbl-${i.id}`);
+                if(lbl) lbl.innerText = translations[lang][i.nameKey];
+                const el = document.getElementById(`item-${i.id}`);
+                if(el) el.title = translations[lang][i.nameKey];
+            });
+            this.rooms.forEach(r => { this.renderWorld(); });
+            this.renderLogs();
+            this.updateUI();
+        },
+
+        getText(key) { return translations[currentLang][key] || key; },
+
+        renderLogs() {
+            const area = document.getElementById('log-area'); area.innerHTML = '';
+            this.logHistory.forEach(logData => {
+                const d = document.createElement('div'); d.className='log-msg';
+                d.innerText = `> ${this.getText(logData.key)}`; if(logData.color) d.style.color = logData.color;
+                area.prepend(d);
+            });
+        },
+
+        log(key, color) {
+            this.logHistory.push({ key: key, color: color });
+            if(this.logHistory.length > 6) this.logHistory.shift();
+            this.renderLogs();
+        },
+
+        renderWorld() {
+            const world = document.getElementById('world'); world.innerHTML = '';
+            this.rooms.forEach(r => {
+                const el = document.createElement('div'); el.className = `room ${r.type}`;
+                el.style.left = r.x + 'px'; el.style.top = r.y + 'px'; el.style.width = r.w + 'px'; el.style.height = r.h + 'px';
+                el.title = translations[currentLang][r.nameKey];
+                const lbl = document.createElement('div'); lbl.className = 'room-label'; lbl.innerText = translations[currentLang][r.nameKey]; el.appendChild(lbl);
+                el.onclick = () => this.handleRoomClick(r.id); world.appendChild(el);
+            });
+            this.items.forEach(i => {
+                const el = this.createEntity(`item-${i.id}`, i.svg, true);
+                el.title = translations[currentLang][i.nameKey];
+                const room = this.rooms.find(r => r.id === i.room);
+                el.style.left = (room.x + i.rx) + 'px'; el.style.top = (room.y + i.ry) + 'px';
+
+                el.style.zIndex = Math.floor(1000 + room.y + i.ry);
+
+                if(i.type !== 'Bed') {
+                    const badge = document.createElement('div'); badge.className = 'percent-badge'; badge.id = `badge-${i.id}`; badge.innerText = i.val + '%';
+                    el.querySelector('.item-sprite').appendChild(badge);
+                } else {
+                    el.querySelector('.item-sprite').style.width = "80px"; el.querySelector('.item-sprite').style.height = "80px";
+                    el.querySelector('.item-sprite').style.left = "-40px"; el.querySelector('.item-sprite').style.top = "-40px";
+                }
+
+                // Timer Badge
+                if(i.type === 'Litter') {
+                    const timer = document.createElement('div'); timer.className = 'timer-badge'; timer.id = `timer-${i.id}`; timer.innerText = "20";
+                    el.appendChild(timer);
+                }
+
+                const lbl = document.createElement('div'); lbl.className = 'item-label'; lbl.id = `lbl-${i.id}`; lbl.innerText = translations[currentLang][i.nameKey];
+                el.querySelector('.item-sprite').appendChild(lbl);
+                el.onclick = (e) => { e.stopPropagation(); this.handleItemClick(i); };
+                world.appendChild(el);
+            });
+            this.cats.forEach(c => {
+                const el = this.createEntity(`cat-${c.id}`, `<img src="${svgToUrl(c.svg)}">`, false, c.id);
+                el.onclick = (e) => { e.stopPropagation(); this.selectCat(c.id); };
+                world.appendChild(el);
+            });
+            this.updatePositions();
+        },
+
+
+        selectCat(id) {
+            this.selectedId = id;
+            this.updatePositions();
+        },
+
+        handleRoomClick(roomId) {
+            if (this.selectedId) {
+                const cat = this.cats.find(c => c.id === this.selectedId);
+                if (cat) {
+                    this.switchRoom(cat, roomId);
+                }
+            }
+        },
+
+        handleItemClick(item) {
+            // Logic to interact with items
+            if (item.id === 'food') {
+                item.val = 100;
+                this.log('foodRefill', '#2ecc71');
+            } else if (item.type === 'Water') {
+                item.val = 100;
+                this.log('waterRefill', '#3498db');
+            } else if (item.type === 'Litter') {
+                item.val = 0;
+                item.stinkTimer = 0;
+                this.toxicCloudActive = false;
+                document.getElementById('stink-overlay').style.display = 'none';
+                this.log('litterClean', '#2ecc71');
+            } else if (item.type === 'Scratch') {
+                item.val = 100;
+                this.log('scratchReplace', '#f1c40f');
+            } else if (item.type === 'Catnip') {
+                item.val = 100;
+                this.log('catnipReplace', '#27ae60');
+            }
+            this.updateUI();
+            this.renderWorld();
+        },
+
+
+        createEntity(id, content, isItem, catName = '') {
+            const el = document.createElement('div'); el.className = 'entity'; el.id = id;
+            const ring = document.createElement('div'); ring.className = 'selection-ring'; el.appendChild(ring);
+            if(!isItem) {
+                const ab = document.createElement('div'); ab.className = 'anger-bubble bubble'; ab.innerText = "!!!"; el.appendChild(ab);
+                const hb = document.createElement('div'); hb.className = 'hungry-bubble bubble'; hb.innerText = "???"; el.appendChild(hb);
+                const tb = document.createElement('div'); tb.className = 'thirst-bubble bubble'; tb.innerText = "💧"; el.appendChild(tb);
+                const lb = document.createElement('div'); lb.className = 'love-bubble bubble'; lb.innerText = "💕"; el.appendChild(lb);
+                const sb = document.createElement('div'); sb.className = 'sleep-bubble bubble'; sb.innerText = "Zzz"; el.appendChild(sb);
+
+                const hbCont = document.createElement('div'); hbCont.className = 'health-bar-container';
+                const hbFill = document.createElement('div'); hbFill.className = 'health-bar-fill'; hbFill.id = `health-${id.replace('cat-','')}`;
+                hbCont.appendChild(hbFill);
+                el.appendChild(hbCont);
+
+                const nameLbl = document.createElement('div'); nameLbl.className = 'cat-name-label';
+                nameLbl.innerText = catName.charAt(0).toUpperCase() + catName.slice(1);
+                el.appendChild(nameLbl);
+            }
+            const shadow = document.createElement('div'); shadow.className = 'cat-shadow'; el.appendChild(shadow);
+            const sprite = document.createElement('div'); sprite.className = isItem ? 'item-sprite' : 'cat-sprite';
+            sprite.innerHTML = isItem ? `<div class="item-icon">${content}</div>` : content;
+            el.appendChild(sprite);
+            return el;
+        },
+
+        updatePositions() {
+            this.cats.forEach(c => {
+                const room = this.rooms.find(r => r.id === c.room);
+                const el = document.getElementById(`cat-${c.id}`);
+                el.style.left = (room.x + c.rx) + 'px'; el.style.top = (room.y + c.ry) + 'px';
+
+                el.style.zIndex = Math.floor(1000 + room.y + c.ry);
+
+                el.classList.remove('selected', 'angry', 'hungry', 'thirsty', 'grooming', 'sleep');
+                if(this.selectedId === c.id) el.classList.add('selected');
+                if(c.state === 'angry') el.classList.add('angry');
+                if(c.state === 'grooming') el.classList.add('grooming');
+                if(c.state === 'sleep') el.classList.add('sleep');
+                if(c.hunger >= 90 && c.state !== 'sleep') el.classList.add('hungry');
+                if(c.thirst >= 90 && c.state !== 'sleep') el.classList.add('thirsty');
+
+                const hb = document.getElementById(`health-${c.id}`);
+                if(hb) {
+                    hb.style.width = c.health + '%';
+                    if(c.health > 50) hb.style.background = '#2ecc71';
+                    else if(c.health > 20) hb.style.background = '#f1c40f';
+                    else hb.style.background = '#e74c3c';
+                }
+            });
+        },
+
+        aiDecide() {
+            if(this.isSleepingTime()) {
+                this.cats.forEach(c => {
+                    if(c.room !== 'master') { this.switchRoom(c, 'master'); }
+                    else {
+                        if(c.state !== 'sleep') {
+                            c.tx = 100 + (Math.random() * 60 - 30);
+                            c.ty = 125 + (Math.random() * 60 - 30);
+                            c.rx = c.tx; c.ry = c.ty; c.state = 'sleep';
+                        }
+                    }
+                });
+                return;
+            }
+
+            this.cats.forEach(c => {
+                if(c.state === 'angry' || c.cd > 0 || c.state === 'grooming') return;
+                if(c.state === 'sleep') c.state = 'idle';
+                if(c.digest > 0) c.digest--;
+
+                const room = this.rooms.find(r => r.id === c.room);
+
+                // 1. THIRST
+                if(c.thirst > 60) {
+                    const f1 = this.items.find(i=>i.id==='water1');
+                    const f2 = this.items.find(i=>i.id==='water2');
+                    let targetFountain = f1;
+                    if(c.room === 'hall' || c.room === 'snooker' || c.room === 'office') targetFountain = f2;
+
+                    if(c.room !== targetFountain.room) { this.switchRoom(c, targetFountain.room); return; }
+                    else {
+                        if(Math.hypot(c.rx-targetFountain.rx, c.ry-targetFountain.ry) > 60) {
+                            c.tx = targetFountain.rx+30; c.ty = targetFountain.ry; c.state='moving'; return;
+                        }
+                    }
+                }
+
+                // 2. HUNGER
+                if(c.hunger >= 90) {
+                    const food = this.items.find(i=>i.id==='food');
+                    if(food.val > 0) {
+                        if(c.room!=='snooker') { this.switchRoom(c, 'snooker'); return; }
+                        else if(Math.hypot(c.rx-food.rx, c.ry-food.ry) > 60) { c.tx = food.rx+50; c.ty = food.ry; c.state='moving'; return; }
+                    }
+                }
+
+                // 3. CATNIP
+                if(Math.random() < 0.1) {
+                    const catnip = this.items.find(i => i.type === 'Catnip' && i.room === c.room && i.val > 0);
+                    if(catnip) { c.tx = catnip.rx + 30; c.ty = catnip.ry; c.state = 'moving'; return; }
+                }
+
+                // 4. SCRATCH
+                if(Math.random() < 0.2) {
+                    const scratcher = this.items.find(i => i.type === 'Scratch' && i.room === c.room && i.val > 0);
+                    if(scratcher) { c.tx = scratcher.rx + 40; c.ty = scratcher.ry; c.state = 'moving'; return; }
+                }
+
+                // 5. LILU THIEF
+                if(c.id === 'lilu' && c.digest === 0 && Math.random() < 0.05) {
+                    if(c.room !== 'snooker') this.switchRoom(c, 'snooker'); return;
+                }
+
+                // 6. MAPACHE
+                if(c.id === 'mapache' && c.room !== 'garden' && Math.random() < 0.005) {
+                    this.switchRoom(c, 'garden'); return;
+                }
+
+                // 7. COUPLE
+                if(c.id === 'chachi' && Math.random() < 0.1) {
+                    const lilu = this.cats.find(x=>x.id==='lilu');
+                    if(lilu.room === c.room && Math.hypot(c.rx-lilu.rx, c.ry-lilu.ry) < 80) {
+                        c.state='grooming'; lilu.state='grooming'; c.cd=6; lilu.cd=6;
+                        this.log('grooming');
+                        this.chaos = Math.max(0, this.chaos - 10);
+                        setTimeout(()=>{ c.state='idle'; lilu.state='idle'; }, 3000);
+                        return;
+                    }
+                    if(lilu.room === c.room) { c.tx = lilu.rx+50; c.ty = lilu.ry; c.state='moving'; }
+                }
+
+                // 8. MAPACHE TUNNEL
+                if(c.id === 'mapache' && Math.random() < 0.15) {
+                    const tunnel = this.items.find(i=>i.id==='tunnel');
+                    if(c.room !== 'office') { this.switchRoom(c, 'office'); return; }
+                    else { c.tx = tunnel.rx; c.ty = tunnel.ry; c.state = 'moving'; return; }
+                }
+
+                // Wander
+                if(Math.random() < 0.1) {
+                    const next = this.rooms[Math.floor(Math.random()*this.rooms.length)];
+                    if(next.id !== c.room) this.switchRoom(c, next.id); return;
+                }
+                if(Math.random() > 0.4) {
+                    const r = this.rooms.find(x=>x.id===c.room);
+                    let tx = Math.random() * (r.w - 40) + 20; let ty = Math.random() * (r.h - 40) + 20;
+                    const tooClose = this.items.some(i => i.room === c.room && Math.hypot(tx - i.rx, ty - i.ry) < 60);
+                    if(!tooClose) { c.tx = tx; c.ty = ty; c.state = 'moving'; }
+                } else { c.state = 'idle'; }
+            });
+        },
+
+        switchRoom(cat, roomId) {
+            cat.room = roomId; const r = this.rooms.find(x=>x.id===roomId);
+            cat.rx = r.w/2; cat.ry = r.h/2; cat.state = 'idle'; cat.cd = 2;
+            this.updatePositions();
+        },
+
+        tick() {
+            if(this.toxicCloudActive) {
+                this.chaos += 0.5;
+                this.cats.forEach(c => c.health -= 0.2);
+            }
+
+            if(this.isSleepingTime()) { this.updatePositions(); return; }
+
+            this.cats.forEach(c => {
+                if(c.cd > 0) c.cd--;
+                c.hunger += 0.2;
+                c.thirst += 0.3;
+
+                if(c.hunger >= 100) { c.hunger = 100; c.health -= 0.5; }
+                if(c.thirst >= 100) { c.thirst = 100; c.health -= 0.8; }
+
+                if(c.state === 'moving' || c.state === 'running') {
+                    const speed = c.state === 'running' ? 40 : 20;
+                    const dx = c.tx - c.rx; const dy = c.ty - c.ry;
+                    const dist = Math.sqrt(dx*dx + dy*dy);
+                    const el = document.getElementById(`cat-${c.id}`);
+                    if(dist < speed) { c.rx = c.tx; c.ry = c.ty; c.state = 'idle'; }
+                    else {
+                        if(dx > 0) el.classList.add('face-right'); else el.classList.remove('face-left');
+                        c.rx += (dx/dist) * speed; c.ry += (dy/dist) * speed;
+                    }
+                }
+                if(c.health <= 0) { alert(this.getText('starvation')); location.reload(); }
+            });
+            this.updatePositions();
+
+            const chachi = this.cats.find(x=>x.id==='chachi');
+            const mapache = this.cats.find(x=>x.id==='mapache');
+            if(chachi.room === mapache.room && Math.hypot(chachi.rx - mapache.rx, chachi.ry - mapache.ry) < 150) {
+                if(chachi.state !== 'angry') {
+                    chachi.state = 'angry'; chachi.health -= 5;
+                    this.log('fight', '#e74c3c'); this.chaos += 5;
+                    setTimeout(() => {
+                        chachi.state = 'running';
+                        chachi.tx = chachi.rx + (chachi.rx > mapache.rx ? 150 : -150);
+                        chachi.ty = chachi.ry + (chachi.ry > mapache.ry ? 150 : -150);
+                    }, 2000);
+                }
+            }
+
+            // Mapache Night Fox Fight
+            if(mapache.room === 'garden' && (this.time.h >= 19 || this.time.h < 6)) {
+                if(Math.random() > 0.9) { this.chaos += 2; this.log('foxFight', '#e74c3c'); }
+            }
+
+            const food = this.items.find(i => i.id === 'food');
+            const catsAtFood = this.cats.filter(c => c.room === 'snooker' && Math.hypot(c.rx - food.rx, c.ry - food.ry) < 80);
+            if(catsAtFood.length > 0 && food.val > 0) {
+                food.val -= 1;
+                catsAtFood.forEach(c => {
+                    if(c.id === 'lilu') {
+                        this.liluFat += (c.hunger < 20) ? 0.5 : 0.2;
+                        c.digest = 300;
+                        this.log('liluEat', '#f1c40f');
+                    }
+                    c.hunger = Math.max(0, c.hunger - 5); c.health = Math.min(100, c.health + 2); c.cd = 5;
+                });
+            }
+            if(this.liluFat > 0) {
+                const lilu = this.cats.find(c => c.id === 'lilu');
+                if(!(lilu.room === 'snooker' && Math.hypot(lilu.rx - food.rx, lilu.ry - food.ry) < 80) && Math.random() > 0.8) this.liluFat -= 0.5;
+            }
+
+            this.items.forEach(i => {
+                if(i.id === 'food' || i.type === 'Bed') return;
+
+                // TOXIC LOGIC
+                if(i.type === 'Litter') {
+                    const lilu = this.cats.find(x=>x.id==='lilu');
+                    if(lilu.room === i.room && Math.hypot(lilu.rx - i.rx, lilu.ry - i.ry) < 60) {
+                        if(i.val < 80 && i.stinkTimer <= 0) {
+                            i.val = 100; i.stinkTimer = 20;
+                            this.log('liluPoop', 'red');
+                        }
+                    }
+
+                    if(i.stinkTimer > 0) {
+                        i.stinkTimer -= 0.5;
+                        const timerEl = document.getElementById(`timer-${i.id}`);
+                        const entityEl = document.getElementById(`item-${i.id}`);
+                        if(timerEl) timerEl.innerText = Math.ceil(i.stinkTimer);
+                        if(entityEl) entityEl.classList.add('timer-active');
+
+                        if(i.stinkTimer <= 0) {
+                            this.toxicCloudActive = true;
+                            document.getElementById('stink-overlay').style.display = 'block';
+                            this.log('stink', 'red');
+                        }
+                    } else {
+                        const entityEl = document.getElementById(`item-${i.id}`);
+                        if(entityEl) entityEl.classList.remove('timer-active');
+                    }
+                }
+
+                // General Use
+                const catNear = this.cats.some(c => c.room === i.room && Math.hypot(c.rx - i.rx, c.ry - i.ry) < 60);
+                if(catNear) {
+                    if(i.type === 'Water') {
+                        i.val -= 1;
+                        // Reduce thirst
+                        this.cats.forEach(c => {
+                            if(c.room === i.room && Math.hypot(c.rx - i.rx, c.ry - i.ry) < 60) {
+                                c.thirst = Math.max(0, c.thirst - 5);
+                                c.health = Math.min(100, c.health + 1);
+                                if(Math.random()>0.9) this.log('drinking');
+                            }
+                        });
+                    }
+                    if(i.type === 'Litter' && i.stinkTimer <= 0) i.val += 2;
+                    if(i.type === 'Scratch' && i.val > 0) { i.val -= 1; this.chaos = Math.max(0, this.chaos - 0.2); }
+                    if(i.type === 'Catnip' && i.val > 0) { i.val -= 2; this.chaos = Math.max(0, this.chaos - 0.5); }
+                }
+                const badge = document.getElementById(`badge-${i.id}`);
+                if(badge) {
+                    badge.innerText = Math.floor(i.val) + '%';
+                    badge.className = 'percent-badge';
+                    if(i.val < 30) badge.classList.add('badge-bad');
+                }
+            });
+
+            this.bebuScream += 0.05;
+            if(this.bebuScream > 80) this.chaos += 0.5;
+            if(this.massageTimer > 0) this.massageTimer--;
+            this.chaos = Math.min(100, Math.max(0, this.chaos));
+            this.liluFat = Math.min(100, Math.max(0, this.liluFat));
+            this.bebuScream = Math.min(100, Math.max(0, this.bebuScream));
+            this.updateUI();
+            if(this.chaos>=100 || this.liluFat>=100) { alert("GAME OVER"); location.reload(); }
+        },
+
+        hushBebu() {
+            if(this.bebuScream > 0) {
+                this.bebuScream = Math.max(0, this.bebuScream - 30);
+                this.log('hushBebu');
+                this.updateUI(); // INSTANT UPDATE
+            }
+        },
+
+        massageMapache() {
+            if(this.massageTimer <= 0) {
+                this.chaos = Math.max(0, this.chaos - 25);
+                this.massageTimer = 20;
+                this.log('massageMap');
+                this.updateUI(); // INSTANT UPDATE
+            }
+        },
+
+        updateUI() {
+            document.getElementById('bar-chaos').style.width = this.chaos+'%';
+            document.getElementById('bar-lilu').style.width = this.liluFat+'%';
+            document.getElementById('bar-bebu').style.width = this.bebuScream+'%';
+            const btn = document.getElementById('btn-massage');
+            btn.disabled = this.massageTimer > 0;
+            btn.innerHTML = this.massageTimer > 0 ? `${this.getText('wait')} ${this.massageTimer}` : "💆 " + this.getText('massage');
+        },
+        log(key, col) {
+            this.logHistory.push({ key: key, color: col });
+            if(this.logHistory.length > 6) this.logHistory.shift();
+            this.renderLogs();
+        }
+    };
+    window.onload = () => game.init();
+</script>
+</body>
+</html>
